@@ -2,6 +2,7 @@ import "../pages/index.css";
 import { initialCards } from "./cards.js";
 import { createCard } from "../components/card.js";
 import { openModal, closeModal } from "../components/modal.js";
+import { enableValidation, clearValidation } from "../components/validation.js";
 
 const cardTemplate = document.querySelector("#card-template").content;
 const cardsList = document.querySelector(".places__list");
@@ -20,6 +21,13 @@ const placeName = addForm.querySelector(".popup__input_type_card-name");
 const placeLink = addForm.querySelector(".popup__input_type_url");
 const imageElement = popupImage.querySelector(".popup__image");
 const imageCaption = popupImage.querySelector(".popup__caption");
+const validationConfig = {
+  inputSelector: ".popup__input",
+  submitButtonSelector: ".popup__button",
+  inactiveButtonClass: "popup__button_disabled",
+  inputErrorClass: "popup__input_type_error",
+  errorClass: "popup__error_visible",
+};
 
 editForm.addEventListener("submit", handleEditFormSubmit);
 addForm.addEventListener("submit", handleAddFormSubmit);
@@ -29,31 +37,39 @@ popupImage.classList.add("popup_is-animated");
 initialCards.forEach((elem) =>
   cardsList.append(createCard(elem, cardTemplate, handleImagePopup))
 );
-popupEdit
-  .querySelector(".popup__close")
-  .addEventListener("click", () => closeModal(popupEdit));
-popupNewCard
-  .querySelector(".popup__close")
-  .addEventListener("click", () => closeModal(popupNewCard));
+popupEdit.querySelector(".popup__close").addEventListener("click", () => {
+  closeModal(popupEdit);
+  clearValidation(editForm, validationConfig);
+});
+popupNewCard.querySelector(".popup__close").addEventListener("click", () => {
+  closeModal(popupNewCard);
+  clearValidation(addForm, validationConfig);
+});
 popupImage
   .querySelector(".popup__close")
   .addEventListener("click", () => closeModal(popupImage));
 editButton.addEventListener("click", () => handleOpenEditPopup());
 addCardButton.addEventListener("click", () => handleOpenAddPopup());
-popupEdit.addEventListener("click", handleCloseOutsideWindow);
-popupNewCard.addEventListener("click", handleCloseOutsideWindow);
+popupEdit.addEventListener("click", (evt) => {
+  handleCloseOutsideWindow(evt);
+});
+popupNewCard.addEventListener("click", (evt) => {
+  handleCloseOutsideWindow(evt);
+});
 popupImage.addEventListener("click", handleCloseOutsideWindow);
 
 function handleOpenEditPopup() {
   editNameInput.value = nameInput.textContent;
   editJobInput.value = jobInput.textContent;
   openModal(popupEdit);
+  clearValidation(editForm, validationConfig);
 }
 
 function handleOpenAddPopup() {
   placeName.value = "";
   placeLink.value = "";
   openModal(popupNewCard);
+  clearValidation(addForm, validationConfig);
 }
 
 function handleEditFormSubmit(evt) {
@@ -92,3 +108,6 @@ function handleCloseOutsideWindow(evt) {
     closeModal(evt.target);
   }
 }
+
+enableValidation(editForm, validationConfig);
+enableValidation(addForm, validationConfig);
