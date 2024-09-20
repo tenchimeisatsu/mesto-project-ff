@@ -1,12 +1,20 @@
 import "../pages/index.css";
-import { initialCards } from "./cards.js";
 import { createCard } from "../components/card.js";
 import { openModal, closeModal } from "../components/modal.js";
 import { enableValidation, clearValidation } from "../components/validation.js";
+import {
+  getMainUserPromise,
+  getCardsPromise,
+  setMainUser,
+  patchMainUserPromise,
+  postNewCardPromise,
+  patchNewAvatarPromise,
+} from "../components/api.js";
 
 const cardTemplate = document.querySelector("#card-template").content;
 const cardsList = document.querySelector(".places__list");
 const popupEdit = document.querySelector(".popup_type_edit");
+const popupEditAvatar = document.querySelector(".popup_type_edit-avatar");
 const popupNewCard = document.querySelector(".popup_type_new-card");
 const popupImage = document.querySelector(".popup_type_image");
 const editButton = document.querySelector(".profile__edit-button");
@@ -21,6 +29,7 @@ const placeName = addForm.querySelector(".popup__input_type_card-name");
 const placeLink = addForm.querySelector(".popup__input_type_url");
 const imageElement = popupImage.querySelector(".popup__image");
 const imageCaption = popupImage.querySelector(".popup__caption");
+const avatarContainer = document.querySelector(".profile__image");
 const validationConfig = {
   inputSelector: ".popup__input",
   submitButtonSelector: ".popup__button",
@@ -28,18 +37,46 @@ const validationConfig = {
   inputErrorClass: "popup__input_type_error",
   errorClass: "popup__error_visible",
 };
+const mainUserPromise = getMainUserPromise();
+const cardsPromise = getCardsPromise();
+const editAvatarForm = popupEditAvatar.querySelector(".popup__form");
+const avatarLink = editAvatarForm.querySelector(".popup__input");
+const avatarEditButton = document.querySelector(".profile__edit-avatar-button");
+let userId;
+
+Promise.all([mainUserPromise, cardsPromise]);
+
+mainUserPromise
+  .then((obj) => (userId = obj._id))
+  .catch((err) => console.log(err));
+
+setMainUser(mainUserPromise, {
+  name: nameInput,
+  about: jobInput,
+  avatar: avatarContainer,
+});
 
 editForm.addEventListener("submit", handleEditFormSubmit);
 addForm.addEventListener("submit", handleAddFormSubmit);
+editAvatarForm.addEventListener("submit", handleEditAvatarFormSubmit);
 popupEdit.classList.add("popup_is-animated");
+popupEditAvatar.classList.add("popup_is-animated");
 popupNewCard.classList.add("popup_is-animated");
 popupImage.classList.add("popup_is-animated");
-initialCards.forEach((elem) =>
-  cardsList.append(createCard(elem, cardTemplate, handleImagePopup))
-);
+cardsPromise
+  .then((arr) =>
+    arr.forEach((elem) =>
+      cardsList.append(createCard(elem, cardTemplate, handleImagePopup, userId))
+    )
+  )
+  .catch((err) => console.log(err));
 popupEdit.querySelector(".popup__close").addEventListener("click", () => {
   closeModal(popupEdit);
   clearValidation(editForm, validationConfig);
+});
+popupEditAvatar.querySelector(".popup__close").addEventListener("click", () => {
+  closeModal(popupEditAvatar);
+  clearValidation(editAvatarForm, validationConfig);
 });
 popupNewCard.querySelector(".popup__close").addEventListener("click", () => {
   closeModal(popupNewCard);
@@ -50,7 +87,11 @@ popupImage
   .addEventListener("click", () => closeModal(popupImage));
 editButton.addEventListener("click", () => handleOpenEditPopup());
 addCardButton.addEventListener("click", () => handleOpenAddPopup());
+avatarEditButton.addEventListener("click", () => handleOpenEditAvatarPopup());
 popupEdit.addEventListener("click", (evt) => {
+  handleCloseOutsideWindow(evt);
+});
+popupEditAvatar.addEventListener("click", (evt) => {
   handleCloseOutsideWindow(evt);
 });
 popupNewCard.addEventListener("click", (evt) => {
@@ -72,28 +113,42 @@ function handleOpenAddPopup() {
   clearValidation(addForm, validationConfig);
 }
 
+function handleOpenEditAvatarPopup() {
+  avatarLink.value = "";
+  openModal(popupEditAvatar);
+  clearValidation(editAvatarForm, validationConfig);
+}
+
 function handleEditFormSubmit(evt) {
   evt.preventDefault();
-  nameInput.textContent = editNameInput.value;
-  jobInput.textContent = editJobInput.value;
-  closeModal(popupEdit);
+  const submitButton = editForm.querySelector(".popup__button");
+  renderLoading(true, submitButton);
+  setMainUser(patchMainUserPromise(editNameInput.value, editJobInput.value), {
+    name: nameInput,
+    about: jobInput,
+    avatar: avatarContainer,
+  }).finally(() => {
+    renderLoading(false, submitButton);
+    closeModal(popupEdit);
+  });
 }
 
 function handleAddFormSubmit(evt) {
   evt.preventDefault();
-  cardsList.prepend(
-    createCard(
-      {
-        name: placeName.value,
-        link: placeLink.value,
-      },
-      cardTemplate,
-      handleImagePopup
+  const submitButton = addForm.querySelector(".popup__button");
+  renderLoading(true, submitButton);
+  const newCardPromise = postNewCardPromise(placeName.value, placeLink.value);
+  newCardPromise
+    .then((obj) =>
+      cardsList.prepend(createCard(obj, cardTemplate, handleImagePopup, userId))
     )
-  );
-  closeModal(popupNewCard);
-  placeName.value = "";
-  placeLink.value = "";
+    .catch((err) => console.log(err))
+    .finally(() => {
+      renderLoading(false, submitButton);
+      closeModal(popupNewCard);
+      placeName.value = "";
+      placeLink.value = "";
+    });
 }
 
 function handleImagePopup(cardElement) {
@@ -109,5 +164,31 @@ function handleCloseOutsideWindow(evt) {
   }
 }
 
+function handleEditAvatarFormSubmit(evt) {
+  evt.preventDefault();
+  const submitButton = editAvatarForm.querySelector(".popup__button");
+  renderLoading(true, submitButton);
+  const newAvatarPromise = patchNewAvatarPromise(avatarLink.value);
+  newAvatarPromise
+    .then(
+      (obj) => (avatarContainer.style.backgroundImage = `url(${obj.avatar})`)
+    )
+    .catch((err) => console.log(err))
+    .finally(() => {
+      renderLoading(false, submitButton);
+      closeModal(popupEditAvatar);
+      avatarLink.value = "";
+    });
+}
+
+function renderLoading(isLoading, buttonElement) {
+  if (isLoading) {
+    buttonElement.textContent = "Сохранение...";
+  } else {
+    buttonElement.textContent = "Сохранить";
+  }
+}
+
 enableValidation(editForm, validationConfig);
 enableValidation(addForm, validationConfig);
+enableValidation(editAvatarForm, validationConfig);
