@@ -1,14 +1,14 @@
-function enableValidation(formElement, validationConfig) {
-  const inputList = formElement.querySelectorAll(
-    validationConfig.inputSelector
-  );
-  const buttonElement = formElement.querySelector(
-    validationConfig.submitButtonSelector
-  );
-  inputList.forEach((input) => {
-    input.addEventListener("input", (evt) => {
-      isValid(evt, validationConfig);
-      toggleButtonState(inputList, buttonElement, validationConfig);
+function enableValidation(validationConfig) {
+  document.querySelectorAll(validationConfig.formSelector).forEach((form) => {
+    const inputList = form.querySelectorAll(validationConfig.inputSelector);
+    const buttonElement = form.querySelector(
+      validationConfig.submitButtonSelector
+    );
+    inputList.forEach((input) => {
+      input.addEventListener("input", (evt) => {
+        isValid(evt, validationConfig);
+        toggleButtonState(inputList, buttonElement, validationConfig);
+      });
     });
   });
 }
@@ -33,16 +33,9 @@ function isValid(evt, validationConfig) {
 }
 
 function generateValidationMessage(input) {
-  const state = input.validity;
-  if (state.tooShort) {
-    return "Минимальное количество символов: 2. Длина текста сейчас: 1 символ.";
-  } else if (state.typeMismatch) {
-    return "Введите адрес сайта.";
-  } else if (state.patternMismatch) {
-    return input.dataset.errorMessage;
-  } else {
-    return "Вы пропустили это поле.";
-  }
+  return input.validity.patternMismatch
+    ? input.dataset.errorMessage
+    : input.validationMessage;
 }
 
 function hasInvalidInput(inputList) {

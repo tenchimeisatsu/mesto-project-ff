@@ -38,17 +38,17 @@ function deleteCard(card, cardId) {
 
 function handleLikeButton(evt, cardId, counterElement) {
   const likeButton = evt.target;
-  if (likeButton.classList.contains("card__like-button_is-active")) {
-    deleteLikeCardPromise(cardId)
-      .then((obj) => (counterElement.textContent = obj.likes.length))
-      .catch((err) => console.log(err));
-    likeButton.classList.remove("card__like-button_is-active");
-  } else {
-    putLikeCardPromise(cardId)
-      .then((obj) => (counterElement.textContent = obj.likes.length))
-      .catch((err) => console.log(err));
-    likeButton.classList.add("card__like-button_is-active");
-  }
+  const likeMethod = likeButton.classList.contains(
+    "card__like-button_is-active"
+  )
+    ? deleteLikeCardPromise
+    : putLikeCardPromise;
+  likeMethod(cardId)
+    .then((obj) => {
+      counterElement.textContent = obj.likes.length;
+      likeButton.classList.toggle("card__like-button_is-active");
+    })
+    .catch((err) => console.log(err));
 }
 
 function hasUserLike(userId, likesList) {

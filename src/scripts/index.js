@@ -5,7 +5,6 @@ import { enableValidation, clearValidation } from "../components/validation.js";
 import {
   getMainUserPromise,
   getCardsPromise,
-  setMainUser,
   patchMainUserPromise,
   postNewCardPromise,
   patchNewAvatarPromise,
@@ -31,6 +30,7 @@ const imageElement = popupImage.querySelector(".popup__image");
 const imageCaption = popupImage.querySelector(".popup__caption");
 const avatarContainer = document.querySelector(".profile__image");
 const validationConfig = {
+  formSelector: ".popup__form",
   inputSelector: ".popup__input",
   submitButtonSelector: ".popup__button",
   inactiveButtonClass: "popup__button_disabled",
@@ -44,17 +44,17 @@ const avatarLink = editAvatarForm.querySelector(".popup__input");
 const avatarEditButton = document.querySelector(".profile__edit-avatar-button");
 let userId;
 
-Promise.all([mainUserPromise, cardsPromise]);
-
-mainUserPromise
-  .then((obj) => (userId = obj._id))
+Promise.all([mainUserPromise, cardsPromise])
+  .then(([userInfo, cards]) => {
+    userId = userInfo._id;
+    nameInput.textContent = userInfo.name;
+    jobInput.textContent = userInfo.about;
+    avatarContainer.style.backgroundImage = `url(${userInfo.avatar})`;
+    cards.forEach((elem) =>
+      cardsList.append(createCard(elem, cardTemplate, handleImagePopup, userId))
+    );
+  })
   .catch((err) => console.log(err));
-
-setMainUser(mainUserPromise, {
-  name: nameInput,
-  about: jobInput,
-  avatar: avatarContainer,
-});
 
 editForm.addEventListener("submit", handleEditFormSubmit);
 addForm.addEventListener("submit", handleAddFormSubmit);
@@ -63,24 +63,14 @@ popupEdit.classList.add("popup_is-animated");
 popupEditAvatar.classList.add("popup_is-animated");
 popupNewCard.classList.add("popup_is-animated");
 popupImage.classList.add("popup_is-animated");
-cardsPromise
-  .then((arr) =>
-    arr.forEach((elem) =>
-      cardsList.append(createCard(elem, cardTemplate, handleImagePopup, userId))
-    )
-  )
-  .catch((err) => console.log(err));
 popupEdit.querySelector(".popup__close").addEventListener("click", () => {
   closeModal(popupEdit);
-  clearValidation(editForm, validationConfig);
 });
 popupEditAvatar.querySelector(".popup__close").addEventListener("click", () => {
   closeModal(popupEditAvatar);
-  clearValidation(editAvatarForm, validationConfig);
 });
 popupNewCard.querySelector(".popup__close").addEventListener("click", () => {
   closeModal(popupNewCard);
-  clearValidation(addForm, validationConfig);
 });
 popupImage
   .querySelector(".popup__close")
@@ -182,13 +172,17 @@ function handleEditAvatarFormSubmit(evt) {
 }
 
 function renderLoading(isLoading, buttonElement) {
-  if (isLoading) {
-    buttonElement.textContent = "Сохранение...";
-  } else {
-    buttonElement.textContent = "Сохранить";
-  }
+  buttonElement.textContent = isLoading ? "Сохранение..." : "Сохранить";
 }
 
-enableValidation(editForm, validationConfig);
-enableValidation(addForm, validationConfig);
-enableValidation(editAvatarForm, validationConfig);
+function setMainUser(promise, userObject) {
+  return promise
+    .then((obj) => {
+      userObject.name.textContent = obj.name;
+      userObject.about.textContent = obj.about;
+      userObject.avatar.style.backgroundImage = `url(${obj.avatar})`;
+    })
+    .catch((err) => console.log(err));
+}
+
+enableValidation(validationConfig);
